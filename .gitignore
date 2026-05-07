@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+.env
+.streamlit/secrets.toml
+credentials.json
+service_account.json
+*.mp4
+*.mov
+.temp/
+output/
+inbox/
+pool_*/
+settings.json
