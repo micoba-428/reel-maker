@@ -1,16 +1,14 @@
 """
-振り分けページ - モバイル最適化
-1枚ずつ大きく表示して、大きなボタンでpool 1〜5に振り分け
+振り分けページ - Drive API版・モバイル最適化
+inboxの写真を1枚ずつ大きく表示してpool 1〜5に振り分け
 """
 
 import os
 import sys
-import shutil
-
 import streamlit as st
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import config
+from drive_storage import get_storage_from_streamlit
 
 st.set_page_config(
     page_title="振り分け | Reel Maker",
@@ -26,7 +24,6 @@ st.markdown("""
   h1 { color: #ff5078 !important; font-size: 1.8rem !important; }
   h3 { color: #fff !important; }
 
-  /* 大きな番号ボタン（タップしやすく） */
   div[data-testid="stButton"] > button {
     background: #2a2a4a; color: white; border: 2px solid #3a3a5a;
     border-radius: 14px; padding: 1rem 0.4rem;
@@ -37,64 +34,34 @@ st.markdown("""
     background: linear-gradient(135deg, #ff5078, #c850c0);
     border-color: #ff5078; transform: scale(1.03);
   }
-
-  /* 戻るボタン */
   div[data-testid="stButton"] > button[kind="secondary"] {
     background: transparent !important; color: #aaa !important;
     border: 1px solid #555 !important; min-height: 40px !important;
     font-size: 0.95rem !important;
   }
-
-  /* 削除・スキップ */
   .secondary-row div[data-testid="stButton"] > button {
     background: #444; font-size: 0.9rem; min-height: 50px;
   }
-
-  /* プログレス */
   .progress-bar {
     background: #2a2a4a; border-radius: 10px; height: 8px;
     overflow: hidden; margin: 10px 0;
   }
   .progress-fill {
-    background: linear-gradient(90deg, #ff5078, #c850c0);
-    height: 100%;
+    background: linear-gradient(90deg, #ff5078, #c850c0); height: 100%;
   }
 </style>
 """, unsafe_allow_html=True)
 
 
-IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".heic", ".webp", ".mp4", ".mov"}
+@st.cache_resource
+def get_storage():
+    return get_storage_from_streamlit()
 
-
-def _scan_inbox():
-    d = config.INBOX_DIR
-    os.makedirs(d, exist_ok=True)
-    files = []
-    for f in os.listdir(d):
-        if f.startswith("."):
-            continue
-        if os.path.splitext(f)[1].lower() in IMAGE_EXTS:
-            full = os.path.join(d, f)
-            files.append((full, os.path.getmtime(full)))
-    files.sort(key=lambda x: x[1])
-    return [f for f, _ in files]
-
-
-def _move_to_pool(src: str, pool_num: int, priority: bool):
-    dest_dir = os.path.join(config.POOL_BASE, f"pool_{pool_num}")
-    os.makedirs(dest_dir, exist_ok=True)
-    base = os.path.basename(src)
-    if priority and not base.startswith("0_"):
-        base = "0_" + base
-    dest = os.path.join(dest_dir, base)
-    if os.path.exists(dest):
-        stem, ext = os.path.splitext(base)
-        for i in range(2, 999):
-            cand = os.path.join(dest_dir, f"{stem}_{i}{ext}")
-            if not os.path.exists(cand):
-                dest = cand
-                break
-    shutil.move(src, dest)
+try:
+    storage = get_storage()
+except Exception as e:
+    st.error(f"Drive接続エラー: {e}")
+    st.stop()
 
 
 # ── 戻るボタン ───────────────────────────────────────────────────────────────
@@ -115,29 +82,41 @@ st.session_state.priority_mode = priority
 
 st.markdown("---")
 
-photos = _scan_inbox()
+# ── inbox 取得 ────────────────────────────────────────────────────────────
+photos = storage.list_files("inbox")
+# 画像/動画のみ（modifiedTimeで古い順）
+IMG_MIMES = ("image/", "video/")
+photos = [f for f in photos if any(f.get("mimeType", "").startswith(m) for m in IMG_MIMES)]
+# スキップ済みは末尾に回す
+skipped = st.session_state.get("skipped_ids", set())
+non_skipped = [f for f in photos if f["id"] not in skipped]
+skipped_list = [f for f in photos if f["id"] in skipped]
+photos = non_skipped + skipped_list
 
 if not photos:
     st.info("📭 inboxは空です")
-    st.markdown(f"""
-    **写真の保存先:**
-    ```
-    {config.INBOX_DIR}
-    ```
+    st.markdown("""
+    **写真の保存方法:**
 
-    LINE Mac → 写真を右クリック → 「画像を保存」→ 上のフォルダを選択
+    📱 **iPhone から:**
+    1. LINE で写真を長押し → 「保存」（カメラロール経由）
+    2. Google Drive アプリを開く → `reel_maker/inbox` フォルダへアップロード
+
+    💻 **Mac から:**
+    1. LINE Mac で写真を右クリック → 「画像を保存」
+    2. Drive Desktop の `reel_maker/inbox/` を保存先に選択
 
     保存後、下のボタンで再読み込みしてください。
     """)
     if st.button("🔄 再読み込み", key="reload"):
+        st.cache_resource.clear()
         st.rerun()
     st.stop()
 
-# ── プログレスバー ────────────────────────────────────────────────────────────
+# ── プログレス ────────────────────────────────────────────────────────────────
 total = len(photos) + st.session_state.get("sorted_count", 0)
 sorted_n = st.session_state.get("sorted_count", 0)
 pct = int((sorted_n / total) * 100) if total > 0 else 0
-
 st.markdown(
     f'<div class="progress-bar"><div class="progress-fill" style="width:{pct}%"></div></div>'
     f'<div style="text-align:center; color:#aaa; margin-bottom:1rem;">'
@@ -145,19 +124,25 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ── 現在の写真を1枚大きく表示 ────────────────────────────────────────────────
-photo_path = photos[0]
-ext = os.path.splitext(photo_path)[1].lower()
+# ── 現在の写真を表示 ─────────────────────────────────────────────────────────
+photo = photos[0]
+photo_id = photo["id"]
+photo_name = photo["name"]
+mime = photo.get("mimeType", "")
 
-if ext in {".mp4", ".mov"}:
-    st.video(photo_path)
+# Drive のサムネイルURL（800px幅）
+thumb_url = storage.get_thumbnail_url(photo_id)
+
+if mime.startswith("video/"):
+    st.info(f"🎬 動画: {photo_name}（プレビュー省略）")
 else:
-    try:
-        st.image(photo_path, use_container_width=True)
-    except Exception:
-        st.warning(f"表示不可: {os.path.basename(photo_path)}")
+    st.markdown(
+        f'<img src="{thumb_url}" style="width:100%;border-radius:12px;'
+        f'box-shadow:0 4px 24px rgba(0,0,0,0.4);" />',
+        unsafe_allow_html=True,
+    )
 
-st.caption(f"📄 {os.path.basename(photo_path)}")
+st.caption(f"📄 {photo_name}")
 
 # ── 振り分けボタン（1〜5） ───────────────────────────────────────────────────
 st.markdown("### このカテゴリへ")
@@ -165,20 +150,32 @@ cols = st.columns(5)
 for i, col in enumerate(cols, start=1):
     with col:
         if st.button(str(i), key=f"sort_{i}"):
-            _move_to_pool(photo_path, i, priority=priority)
-            st.session_state.sorted_count = sorted_n + 1
-            st.rerun()
+            new_name = photo_name
+            if priority and not new_name.startswith("0_"):
+                new_name = "0_" + new_name
+            try:
+                storage.move(photo_id, f"pool_{i}",
+                             new_name=new_name if new_name != photo_name else None)
+                st.session_state.sorted_count = sorted_n + 1
+                st.rerun()
+            except Exception as e:
+                st.error(f"移動失敗: {e}")
 
 # ── スキップ・削除 ────────────────────────────────────────────────────────────
 st.markdown('<div class="secondary-row">', unsafe_allow_html=True)
 c1, c2 = st.columns(2)
 with c1:
     if st.button("⏭️ スキップ", key="skip"):
-        # 末尾に移動（ファイル日時を更新）
-        os.utime(photo_path, None)
+        # 末尾扱いにするには削除→再Upしか無いので、いったん非表示用にセッションに記録
+        skipped = st.session_state.get("skipped_ids", set())
+        skipped.add(photo_id)
+        st.session_state.skipped_ids = skipped
         st.rerun()
 with c2:
     if st.button("🗑️ 削除", key="delete"):
-        os.remove(photo_path)
-        st.rerun()
+        try:
+            storage.delete(photo_id)
+            st.rerun()
+        except Exception as e:
+            st.error(f"削除失敗: {e}")
 st.markdown('</div>', unsafe_allow_html=True)

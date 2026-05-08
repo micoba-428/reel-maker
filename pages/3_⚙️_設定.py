@@ -1,14 +1,13 @@
 """
-設定ページ - 共有Drive・出力先・LINE保存先の確認
+設定ページ - Drive 構成・共有方法のガイド
 """
 
 import os
 import sys
-import json
 import streamlit as st
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import config
+from drive_storage import get_storage_from_streamlit
 
 st.set_page_config(
     page_title="設定 | Reel Maker",
@@ -33,7 +32,7 @@ st.markdown("""
   div[data-testid="stButton"] > button[kind="secondary"] {
     background: transparent !important; color: #aaa !important;
     border: 1px solid #555 !important; min-height: 40px !important;
-    font-size: 0.95rem !important; padding: 0.5rem !important;
+    font-size: 0.95rem !important;
   }
 
   .info-card {
@@ -45,112 +44,70 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+@st.cache_resource
+def get_storage():
+    return get_storage_from_streamlit()
+
+try:
+    storage = get_storage()
+    drive_ok = True
+except Exception as e:
+    storage = None
+    drive_ok = False
+    drive_err = str(e)
+
 # ── 戻るボタン ───────────────────────────────────────────────────────────────
 if st.button("← ホームに戻る", type="secondary", key="back"):
     st.switch_page("main.py")
 
 st.title("⚙️ 設定")
 
-
-SETTINGS_FILE = os.path.join(config.DATA_ROOT, "settings.json")
-
-
-def _load_settings() -> dict:
-    if os.path.isfile(SETTINGS_FILE):
-        try:
-            with open(SETTINGS_FILE) as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
-
-
-def _save_settings(s: dict):
-    with open(SETTINGS_FILE, "w") as f:
-        json.dump(s, f, ensure_ascii=False, indent=2)
-
-
-settings = _load_settings()
-
-# ── パス情報 ────────────────────────────────────────────────────────────────
-st.markdown("### 📍 保存先パス")
-
-st.markdown('<div class="info-card">', unsafe_allow_html=True)
-st.markdown("**📥 LINE保存先（inbox）**")
-st.code(config.INBOX_DIR, language="text")
-st.caption("LINE Mac → 写真を右クリック → 画像を保存 → 上のフォルダを選択")
-st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown('<div class="info-card">', unsafe_allow_html=True)
-st.markdown("**📁 プールフォルダ（pool_1〜pool_5）**")
-st.code(config.POOL_BASE, language="text")
-st.markdown('</div>', unsafe_allow_html=True)
-
-st.markdown('<div class="info-card">', unsafe_allow_html=True)
-st.markdown("**🎬 出力先（生成リール）**")
-default_output = os.path.join(config.DATA_ROOT, "output")
-output_path = settings.get("output_dir", default_output)
-new_output = st.text_input(
-    "出力先パス",
-    value=output_path,
-    help="共有Driveパスに変更すると、投稿アカウントから直接アクセスできます",
-)
-if new_output != output_path:
-    settings["output_dir"] = new_output
-    _save_settings(settings)
-    st.success("保存しました")
-st.markdown('</div>', unsafe_allow_html=True)
+# ── 接続状態 ─────────────────────────────────────────────────────────────────
+st.markdown("### ☁️ Google Drive 接続状況")
+if drive_ok:
+    st.success("✅ 接続成功")
+    root = storage.root_id()
+    drive_url = f"https://drive.google.com/drive/folders/{root}"
+    st.markdown(f"[Driveでフォルダを開く]({drive_url})")
+else:
+    st.error(f"❌ 接続エラー: {drive_err}")
 
 st.markdown("---")
 
-# ── 共有Driveの設定方法 ──────────────────────────────────────────────────────
-st.markdown("### 🤝 共有Driveの使い方")
+# ── LINE保存方法 ────────────────────────────────────────────────────────────
+st.markdown("### 📥 LINE → inbox 保存方法")
 st.markdown("""
-**投稿アカウントと共有する手順:**
-1. Google Drive で `reel_maker` フォルダを右クリック
-2. 「共有」→ 投稿アカウントのGmailアドレスを追加
-3. 権限は「**編集者**」に設定
-4. 投稿アカウント側でも Drive Desktop でアクセス可能になります
+**📱 iPhone:**
+1. LINE で写真を長押し → 「保存」（カメラロール）
+2. **Google Drive アプリ**で `reel_maker / inbox` フォルダにアップロード
+3. アプリの「📥 写真を振り分ける」を開く
 
-これで投稿アカウントから生成済みリールを直接 Instagram に予約投稿できます。
+**💻 Mac:**
+1. LINE Mac で写真を右クリック → 「画像を保存」
+2. 保存先：`マイドライブ/reel_maker/inbox/`
+3. アプリの「📥 写真を振り分ける」を開く
 """)
 
 st.markdown("---")
 
-# ── デフォルト値 ──────────────────────────────────────────────────────────────
-st.markdown("### 🎨 デフォルト設定")
+# ── 投稿アカウントとの共有 ────────────────────────────────────────────────────
+st.markdown("### 🤝 投稿アカウントと共有")
+st.markdown("""
+**手順:**
+1. Google Drive で `reel_maker` フォルダを右クリック
+2. 「共有」→ 投稿用アカウントのGmailを追加
+3. 権限: **編集者**
+4. 完了
 
-with st.form("defaults"):
-    default_username = st.text_input(
-        "Instagramユーザー名",
-        value=settings.get("username", "@your_account"),
-    )
-    default_cta = st.text_input(
-        "CTAテキスト",
-        value=settings.get("cta_text", "フォローはこちら 👆"),
-    )
-    default_length = st.select_slider(
-        "デフォルトのリール長さ（秒）",
-        options=[30, 35, 40, 45, 50, 55, 60],
-        value=settings.get("default_length", 45),
-    )
-
-    if st.form_submit_button("💾 保存"):
-        settings.update({
-            "username": default_username,
-            "cta_text": default_cta,
-            "default_length": default_length,
-        })
-        _save_settings(settings)
-        st.success("✅ 設定を保存しました")
+これで投稿用アカウントから直接 `output` フォルダの動画にアクセスでき、
+Instagram Creator Studioや予約投稿アプリ（Later, Buffer等）から投稿できます。
+""")
 
 st.markdown("---")
 
 # ── システム情報 ─────────────────────────────────────────────────────────────
-st.markdown("### ℹ️ システム情報")
-with st.expander("詳細"):
-    st.code(f"""
-DATA_ROOT  : {config.DATA_ROOT}
-BASE_DIR   : {config.BASE_DIR}
-DRIVE_REEL : {config.DRIVE_REEL_DIR or "未検出"}
-    """.strip())
+with st.expander("ℹ️ システム情報"):
+    if drive_ok:
+        st.code(f"Drive root_id: {storage.root_id()}")
+    else:
+        st.code("Drive 未接続")
