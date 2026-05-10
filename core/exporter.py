@@ -1,9 +1,9 @@
 import os
 from datetime import datetime
-from moviepy.editor import VideoClip, concatenate_videoclips, CompositeVideoClip
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
+# moviepy は起動時セグフォルト回避のため関数内でlazy import
 
 
 class Exporter:

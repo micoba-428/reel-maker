@@ -1,10 +1,10 @@
 import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
-from moviepy.editor import VideoClip
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
+# moviepy は起動時セグフォルト回避のため関数内でlazy import
 
 from core.text_overlay import _load_font, _text_with_shadow
 
@@ -129,6 +129,7 @@ class EndingGenerator:
             base = Image.alpha_composite(base, overlay)
             return np.array(base.convert("RGB"))
 
+        from moviepy.editor import VideoClip
         clip = VideoClip(make_frame, duration=dur)
         return clip.set_fps(config.FPS)
 

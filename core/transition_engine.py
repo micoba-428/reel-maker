@@ -1,10 +1,10 @@
 import numpy as np
 from PIL import Image, ImageFilter
-from moviepy.editor import VideoClip, CompositeVideoClip
 import os
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
+# moviepy は起動時セグフォルト回避のため関数内でlazy import
 
 
 class TransitionEngine:
@@ -50,6 +50,7 @@ class TransitionEngine:
 
     # ── Cross Dissolve ─────────────────────────────────────────────
     def _crossdissolve(self, clip_a, clip_b, d):
+        from moviepy.editor import CompositeVideoClip
         clip_a_out = clip_a.crossfadeout(d)
         clip_b_in = clip_b.crossfadein(d).set_start(clip_a.duration - d)
         result = CompositeVideoClip([clip_a_out, clip_b_in])
@@ -58,6 +59,7 @@ class TransitionEngine:
 
     # ── Fade (black) ───────────────────────────────────────────────
     def _fade(self, clip_a, clip_b, d):
+        from moviepy.editor import CompositeVideoClip
         clip_a_out = clip_a.fadeout(d / 2)
         clip_b_in = clip_b.fadein(d / 2).set_start(clip_a.duration - d / 2)
         result = CompositeVideoClip([clip_a_out, clip_b_in])
@@ -91,6 +93,7 @@ class TransitionEngine:
                 frame[:split, :] = fb[:split, :]
             return frame
 
+        from moviepy.editor import VideoClip
         result = VideoClip(make_frame, duration=total_dur)
         return result.set_fps(config.FPS)
 
@@ -132,6 +135,7 @@ class TransitionEngine:
             blended = ((1 - alpha) * fa_arr + alpha * fb_arr).astype(np.uint8)
             return blended
 
+        from moviepy.editor import VideoClip
         result = VideoClip(make_frame, duration=total_dur)
         return result.set_fps(config.FPS)
 
@@ -177,5 +181,6 @@ class TransitionEngine:
 
             return frame
 
+        from moviepy.editor import VideoClip
         result = VideoClip(make_frame, duration=total_dur)
         return result.set_fps(config.FPS)

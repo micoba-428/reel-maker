@@ -1,23 +1,23 @@
 import os
 import numpy as np
 from PIL import Image
-from moviepy.editor import VideoFileClip, VideoClip, ImageClip
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
+# moviepy は起動時セグフォルト回避のため関数内でlazy import
 
 
 class MediaProcessor:
     """Load images/videos and normalize to Instagram Reel format (1080x1920, 30fps)."""
 
-    def load(self, path: str, duration: float = None) -> VideoClip:
+    def load(self, path: str, duration: float = None):
         ext = os.path.splitext(path)[1].lower()
         if ext in ('.jpg', '.jpeg', '.png', '.webp', '.bmp', '.gif'):
             return self._image_to_video(path, duration or config.DEFAULT_IMAGE_DURATION)
         else:
             return self._normalize_video(path, duration)
 
-    def _image_to_video(self, path: str, duration: float) -> VideoClip:
+    def _image_to_video(self, path: str, duration: float):
         img = Image.open(path).convert('RGB')
         img = self._cover_crop(img)
         img_large = img.resize(
@@ -42,9 +42,11 @@ class MediaProcessor:
             ))
             return frame
 
+        from moviepy.editor import VideoClip
         return VideoClip(make_frame, duration=duration).set_fps(config.FPS)
 
-    def _normalize_video(self, path: str, duration: float = None) -> VideoClip:
+    def _normalize_video(self, path: str, duration: float = None):
+        from moviepy.editor import VideoFileClip
         clip = VideoFileClip(path)
         if duration:
             clip = clip.subclip(0, min(duration, clip.duration))

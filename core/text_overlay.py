@@ -1,10 +1,10 @@
 import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from moviepy.editor import VideoClip
 import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
+# moviepy は起動時セグフォルト回避のため関数内でlazy import
 
 
 def _load_font(size: int) -> ImageFont.FreeTypeFont:
@@ -47,9 +47,9 @@ def _wrap_text(text: str, font, max_width: int) -> list[str]:
 
 class TextOverlay:
 
-    def add_title(self, clip: VideoClip, title: str,
-                  style: str = "modern") -> VideoClip:
+    def add_title(self, clip, title: str, style: str = "modern"):
         """Overlay animated title on the first 2.5 seconds of the clip."""
+        from moviepy.editor import VideoClip
         if not title.strip():
             return clip
 
@@ -124,10 +124,11 @@ class TextOverlay:
             result = result.set_audio(clip.audio)
         return result
 
-    def add_message(self, clip: VideoClip, text: str,
+    def add_message(self, clip, text: str,
                     position: str = "bottom",
-                    animation: str = "fade_in") -> VideoClip:
+                    animation: str = "fade_in"):
         """Overlay a message text on the clip."""
+        from moviepy.editor import VideoClip
         if not text.strip():
             return clip
 
