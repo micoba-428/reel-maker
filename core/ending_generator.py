@@ -17,7 +17,7 @@ class EndingGenerator:
                username: str = "@your_account",
                cta_text: str = "フォローはこちら 👆",
                duration: float = None,
-               bg_style: str = "gradient") -> VideoClip:
+               bg_style: str = "gradient"):
 
         dur = duration or config.DEFAULT_ENDING_DURATION
         w, h = config.TARGET_WIDTH, config.TARGET_HEIGHT

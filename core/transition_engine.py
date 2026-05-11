@@ -11,8 +11,8 @@ import config
 class TransitionEngine:
     """Apply transitions between two VideoClip objects."""
 
-    def apply(self, clip_a: VideoClip, clip_b: VideoClip,
-              transition: str = "crossdissolve") -> VideoClip:
+    def apply(self, clip_a, clip_b,
+              transition: str = "crossdissolve"):
         if transition == "auto":
             transition = self._auto_select(clip_a, clip_b)
         d = config.TRANSITION_DURATION
@@ -31,7 +31,7 @@ class TransitionEngine:
         else:
             return self._crossdissolve(clip_a, clip_b, d)
 
-    def _auto_select(self, clip_a: VideoClip, clip_b: VideoClip) -> str:
+    def _auto_select(self, clip_a, clip_b) -> str:
         """Pick transition based on clip energy (brightness variance)."""
         try:
             frame_a = clip_a.get_frame(min(0.5, clip_a.duration - 0.1))
