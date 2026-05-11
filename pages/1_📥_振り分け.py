@@ -6,6 +6,7 @@ import mimetypes
 import os
 import sys
 from datetime import datetime
+from hashlib import md5
 
 import streamlit as st
 
@@ -56,6 +57,23 @@ st.markdown("""
     box-shadow: 0 -4px 18px rgba(0,0,0,0.35);
   }
   .thumb-name { color: #ddd; font-size: .78rem; word-break: break-all; }
+  .grid-caption {
+    color: #ddd; font-size: .74rem; line-height: 1.2;
+    min-height: 2.1em; word-break: break-all;
+  }
+  .grid-box {
+    background: #151528; border: 1px solid #2a2a4a;
+    border-radius: 10px; padding: 6px; margin-bottom: 8px;
+  }
+  .grid-box img {
+    width: 100%; aspect-ratio: 1 / 1; object-fit: cover;
+    border-radius: 8px; display: block;
+  }
+  .video-tile {
+    width: 100%; aspect-ratio: 1 / 1; border-radius: 8px;
+    background: #252542; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:800;
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -101,12 +119,59 @@ def _display_media(file_info: dict):
         st.info(f"🎬 {file_info.get('name', '動画')}")
 
 
+def _safe_key(value: str) -> str:
+    return md5(value.encode("utf-8")).hexdigest()
+
+
+def _render_grid_media(file_info: dict):
+    mime = file_info.get("mimeType", "")
+    local_path = file_info.get("localPath") or file_info.get("id", "").removeprefix("local:")
+    if mime.startswith("image/") and os.path.isfile(local_path):
+        mtime = os.path.getmtime(local_path)
+        st.markdown(
+            f'<div class="grid-box"><img src="data:image/jpeg;base64,{_image_b64(local_path, mtime)}" /></div>',
+            unsafe_allow_html=True,
+        )
+    elif mime.startswith("image/"):
+        st.markdown(
+            f'<div class="grid-box"><img src="{storage.get_thumbnail_url(file_info["id"])}" /></div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown('<div class="grid-box"><div class="video-tile">動画</div></div>', unsafe_allow_html=True)
+
+
+@st.cache_data(show_spinner=False)
+def _image_b64(path: str, mtime: float) -> str:
+    import base64
+    from io import BytesIO
+    from PIL import Image, ImageOps
+
+    try:
+        with Image.open(path) as img:
+            img = ImageOps.exif_transpose(img)
+            img.thumbnail((420, 420))
+            canvas = Image.new("RGB", (420, 420), (18, 18, 36))
+            img = img.convert("RGB")
+            x = (420 - img.width) // 2
+            y = (420 - img.height) // 2
+            canvas.paste(img, (x, y))
+            buffer = BytesIO()
+            canvas.save(buffer, format="JPEG", quality=76, optimize=True)
+            return base64.b64encode(buffer.getvalue()).decode("ascii")
+    except Exception:
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode("ascii")
+
+
 if "selected_folder" not in st.session_state:
     st.session_state.selected_folder = None
 if "uploader_version" not in st.session_state:
     st.session_state.uploader_version = 0
 if "processed_uploads" not in st.session_state:
     st.session_state.processed_uploads = set()
+if "delete_selection" not in st.session_state:
+    st.session_state.delete_selection = {}
 
 
 if st.button("← ホームに戻る", type="secondary", key="back_home_top"):
@@ -210,13 +275,21 @@ if not files:
     st.info("まだ写真が入っていません。上の「写真を選択」から追加してください。")
 else:
     selected_for_delete = []
-    for idx, file_info in enumerate(files, start=1):
-        st.markdown(f"**{idx}. {file_info['name']}**")
-        _display_media(file_info)
-        if st.checkbox("削除対象にする", key=f"delete_check_{folder_num}_{file_info['id']}"):
-            selected_for_delete.append(file_info)
-        st.markdown('<div class="thumb-name">確認して、間違っていたら削除対象にしてください。</div>', unsafe_allow_html=True)
-        st.markdown("---")
+    for row_start in range(0, len(files), 3):
+        cols = st.columns(3)
+        for offset, col in enumerate(cols):
+            idx = row_start + offset
+            if idx >= len(files):
+                continue
+            file_info = files[idx]
+            file_id = file_info["id"]
+            check_key = f"del_{folder_num}_{_safe_key(file_id)}"
+            with col:
+                _render_grid_media(file_info)
+                st.markdown(f'<div class="grid-caption">{idx + 1}. {file_info["name"]}</div>', unsafe_allow_html=True)
+                checked = st.checkbox("削除", key=check_key)
+                if checked:
+                    selected_for_delete.append(file_info)
 
     if selected_for_delete:
         st.warning(f"{len(selected_for_delete)}件を削除対象にしています。")
@@ -229,6 +302,9 @@ else:
                 except Exception as e:
                     st.error(f"{file_info['name']} の削除に失敗: {e}")
             st.success(f"{deleted}件削除しました。")
+            for key in list(st.session_state.keys()):
+                if key.startswith(f"del_{folder_num}_"):
+                    del st.session_state[key]
             st.rerun()
 
 st.markdown(
