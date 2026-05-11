@@ -65,10 +65,10 @@ COLOR_SEMI_BLACK = (0, 0, 0, 160)  # RGBA for text background
 
 # Pool names (1-indexed)
 POOL_NAMES = {
-    1: "外の外観",
+    1: "外",
     2: "ランチ",
-    3: "デザート＆ドリンク",
-    4: "室内",
+    3: "カフェメニュー",
+    4: "店の中",
     5: "その他",
 }
 

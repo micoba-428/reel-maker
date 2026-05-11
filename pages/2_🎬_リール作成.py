@@ -92,10 +92,11 @@ for n in range(1, 6):
     c = counts[n]
     icon = "✅" if c > 0 else "⬜"
     color = "#1aaa55" if c > 0 else "#ff8090"
+    name = config.POOL_NAMES[n]
     st.markdown(
         f'<div style="display:flex;justify-content:space-between;'
         f'padding:6px 12px;background:#1a1a2e;border-radius:8px;margin-bottom:4px;">'
-        f'<span style="color:{color}">{icon} Pool {n}</span>'
+        f'<span style="color:{color}">{icon} {n}. {name}</span>'
         f'<span style="font-weight:700">{c}枚</span></div>',
         unsafe_allow_html=True,
     )
@@ -139,7 +140,8 @@ with c2:
 required_pools = sorted(set(int(c) for c in p))
 missing = [n for n in required_pools if counts[n] == 0]
 if missing:
-    st.warning(f"⚠️ Pool {missing} に写真がありません。")
+    missing_names = [f"{n}. {config.POOL_NAMES[n]}" for n in missing]
+    st.warning(f"⚠️ 写真がないフォルダー: {', '.join(missing_names)}")
 
 st.markdown("---")
 

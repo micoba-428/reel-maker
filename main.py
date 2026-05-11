@@ -8,6 +8,7 @@ import streamlit as st
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from drive_storage import get_storage_from_streamlit
+import config
 
 st.set_page_config(
     page_title="Reel Maker",
@@ -90,9 +91,10 @@ st.markdown(
 for n, c in enumerate(pool_counts, 1):
     state = "ok" if c > 0 else "empty"
     icon = "✅" if c > 0 else "⬜"
+    name = config.POOL_NAMES[n]
     st.markdown(
         f'<div class="status-row pool-{state}">'
-        f'<span class="status-label">{icon} Pool {n}</span>'
+        f'<span class="status-label">{icon} {n}. {name}</span>'
         f'<span class="status-value">{c}枚</span>'
         f'</div>',
         unsafe_allow_html=True,
@@ -121,7 +123,7 @@ with st.expander("ℹ️ 使い方"):
     st.markdown("""
     **基本フロー**
     1. **📥 写真を追加** で写真アプリ/端末内の写真を選択
-    2. 追加先の **Pool 1〜5** を選んでDriveへ保存
+    2. 追加先の **1.外 / 2.ランチ / 3.カフェメニュー / 4.店の中 / 5.その他** を選んで保存
     3. **🎬 リール作成** でパターンと長さを選んで生成
     4. 出力されたMP4は**Drive**に自動保存
 
