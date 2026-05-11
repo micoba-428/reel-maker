@@ -61,45 +61,47 @@ ICON_SVG = """
 """
 
 import base64
+import streamlit.components.v1 as components
+
 svg_b64 = base64.b64encode(ICON_SVG.encode()).decode()
 
-st.markdown(f"""
-<head-inject>
+# st.components.v1.html で <script> を実行（iframeから親ドキュメントへ注入）
+components.html(f"""
 <script>
 (function() {{
-  var link180 = document.createElement('link');
+  var pd = window.parent.document;
+  var link180 = pd.createElement('link');
   link180.rel = 'apple-touch-icon';
   link180.sizes = '180x180';
   link180.href = 'data:image/svg+xml;base64,{svg_b64}';
-  document.head.appendChild(link180);
+  pd.head.appendChild(link180);
 
-  var metaCapable = document.createElement('meta');
+  var metaCapable = pd.createElement('meta');
   metaCapable.name = 'apple-mobile-web-app-capable';
   metaCapable.content = 'yes';
-  document.head.appendChild(metaCapable);
+  pd.head.appendChild(metaCapable);
 
-  var metaTitle = document.createElement('meta');
+  var metaTitle = pd.createElement('meta');
   metaTitle.name = 'apple-mobile-web-app-title';
   metaTitle.content = 'Reel Maker';
-  document.head.appendChild(metaTitle);
+  pd.head.appendChild(metaTitle);
 
-  var metaColor = document.createElement('meta');
+  var metaColor = pd.createElement('meta');
   metaColor.name = 'apple-mobile-web-app-status-bar-style';
   metaColor.content = 'black-translucent';
-  document.head.appendChild(metaColor);
+  pd.head.appendChild(metaColor);
 
-  var favicon = document.querySelector("link[rel*='icon']");
+  var favicon = pd.querySelector("link[rel*='icon']");
   if (!favicon) {{
-    favicon = document.createElement('link');
+    favicon = pd.createElement('link');
     favicon.rel = 'icon';
-    document.head.appendChild(favicon);
+    pd.head.appendChild(favicon);
   }}
   favicon.type = 'image/svg+xml';
   favicon.href = 'data:image/svg+xml;base64,{svg_b64}';
 }})();
 </script>
-</head-inject>
-""", unsafe_allow_html=True)
+""", height=0)
 
 # ── モバイルファーストのCSS ───────────────────────────────────────────────────
 st.markdown("""
