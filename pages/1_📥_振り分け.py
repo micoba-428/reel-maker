@@ -150,14 +150,14 @@ def _image_b64(path: str, mtime: float) -> str:
     try:
         with Image.open(path) as img:
             img = ImageOps.exif_transpose(img)
-            img.thumbnail((420, 420))
-            canvas = Image.new("RGB", (420, 420), (18, 18, 36))
+            img.thumbnail((220, 220))
+            canvas = Image.new("RGB", (220, 220), (18, 18, 36))
             img = img.convert("RGB")
-            x = (420 - img.width) // 2
-            y = (420 - img.height) // 2
+            x = (220 - img.width) // 2
+            y = (220 - img.height) // 2
             canvas.paste(img, (x, y))
             buffer = BytesIO()
-            canvas.save(buffer, format="JPEG", quality=76, optimize=True)
+            canvas.save(buffer, format="JPEG", quality=58, optimize=True)
             return base64.b64encode(buffer.getvalue()).decode("ascii")
     except Exception:
         with open(path, "rb") as f:
@@ -172,6 +172,8 @@ if "processed_uploads" not in st.session_state:
     st.session_state.processed_uploads = set()
 if "delete_selection" not in st.session_state:
     st.session_state.delete_selection = {}
+if "gallery_page" not in st.session_state:
+    st.session_state.gallery_page = {}
 
 
 if st.button("← ホームに戻る", type="secondary", key="back_home_top"):
@@ -184,10 +186,9 @@ if st.session_state.selected_folder is None:
     st.markdown("### 追加するフォルダーを選ぶ")
     for n in range(1, 6):
         name = config.POOL_NAMES[n]
-        count = len(_media_files(n))
         st.markdown(
             f'<div class="folder-card"><span class="folder-title">{n}. {name}</span>'
-            f'<span style="float:right" class="folder-count">{count}枚</span></div>',
+            f'<span style="float:right" class="folder-count">開く</span></div>',
             unsafe_allow_html=True,
         )
         if st.button(f"{n}. {name} を開く", key=f"open_{n}"):
@@ -224,20 +225,23 @@ with c2:
         st.rerun()
 
 st.markdown("### 写真を追加")
-uploaded_files = st.file_uploader(
-    f"{folder_name} に入れる写真を選択",
-    type=["jpg", "jpeg", "png", "heic", "heif", "webp", "mp4", "mov"],
-    accept_multiple_files=True,
-    key=f"uploader_{folder_num}_{st.session_state.uploader_version}",
-    help="iPhoneではフォトライブラリを選んで写真を選択できます。",
-)
+with st.form(f"upload_form_{folder_num}_{st.session_state.uploader_version}", clear_on_submit=True):
+    uploaded_files = st.file_uploader(
+        f"{folder_name} に入れる写真を選択",
+        type=["jpg", "jpeg", "png", "heic", "heif", "webp", "mp4", "mov"],
+        accept_multiple_files=True,
+        help="iPhoneではフォトライブラリを選んで写真を選択できます。",
+    )
+    upload_submit = st.form_submit_button("選んだ写真をこのフォルダーに入れる")
 
-if uploaded_files:
-    new_files = [
-        f for f in uploaded_files
-        if _file_signature(f) not in st.session_state.processed_uploads
-    ]
-    if new_files:
+if upload_submit:
+    if not uploaded_files:
+        st.warning("先に写真を選択してください。")
+    else:
+        new_files = [
+            f for f in uploaded_files
+            if _file_signature(f) not in st.session_state.processed_uploads
+        ]
         status = st.empty()
         progress = st.progress(0)
         added = 0
@@ -256,10 +260,12 @@ if uploaded_files:
                     status.info(f"保存中: {idx}/{len(new_files)}")
                 except Exception as e:
                     failed.append(f"{original_name}: {e}")
-                progress.progress(idx / len(new_files))
+                progress.progress(idx / max(len(new_files), 1))
 
         progress.empty()
         status.empty()
+        st.session_state.uploader_version += 1
+        st.session_state.gallery_page[folder_num] = 0
         if added:
             st.success(f"{folder_name} に {added}件入りました。下の一覧で確認できます。")
         if failed:
@@ -274,26 +280,58 @@ st.markdown(f"### {folder_name} に入っている写真一覧（{len(files)}件
 if not files:
     st.info("まだ写真が入っていません。上の「写真を選択」から追加してください。")
 else:
-    selected_for_delete = []
-    for row_start in range(0, len(files), 3):
-        cols = st.columns(3)
-        for offset, col in enumerate(cols):
-            idx = row_start + offset
-            if idx >= len(files):
-                continue
-            file_info = files[idx]
-            file_id = file_info["id"]
-            check_key = f"del_{folder_num}_{_safe_key(file_id)}"
-            with col:
-                _render_grid_media(file_info)
-                st.markdown(f'<div class="grid-caption">{idx + 1}. {file_info["name"]}</div>', unsafe_allow_html=True)
-                checked = st.checkbox("削除", key=check_key)
-                if checked:
-                    selected_for_delete.append(file_info)
+    page_size = 15
+    current_page = st.session_state.gallery_page.get(folder_num, 0)
+    max_page = max((len(files) - 1) // page_size, 0)
+    current_page = min(current_page, max_page)
+    st.session_state.gallery_page[folder_num] = current_page
+    start = current_page * page_size
+    visible_files = files[start:start + page_size]
 
-    if selected_for_delete:
-        st.warning(f"{len(selected_for_delete)}件を削除対象にしています。")
-        if st.button("選択した写真を削除する", key="delete_selected"):
+    if len(files) > page_size:
+        p1, p2, p3 = st.columns([1, 1, 1])
+        with p1:
+            if st.button("前へ", type="secondary", disabled=current_page == 0, key=f"prev_{folder_num}"):
+                st.session_state.gallery_page[folder_num] = max(current_page - 1, 0)
+                st.rerun()
+        with p2:
+            st.markdown(
+                f"<div style='text-align:center;padding:.55rem'>{current_page + 1}/{max_page + 1}</div>",
+                unsafe_allow_html=True,
+            )
+        with p3:
+            if st.button("次へ", type="secondary", disabled=current_page >= max_page, key=f"next_{folder_num}"):
+                st.session_state.gallery_page[folder_num] = min(current_page + 1, max_page)
+                st.rerun()
+
+    selected_for_delete = []
+    with st.form(f"delete_form_{folder_num}_{current_page}"):
+        for row_start in range(0, len(visible_files), 3):
+            cols = st.columns(3)
+            for offset, col in enumerate(cols):
+                idx = row_start + offset
+                if idx >= len(visible_files):
+                    continue
+                absolute_idx = start + idx
+                file_info = visible_files[idx]
+                file_id = file_info["id"]
+                check_key = f"del_{folder_num}_{_safe_key(file_id)}"
+                with col:
+                    _render_grid_media(file_info)
+                    st.markdown(
+                        f'<div class="grid-caption">{absolute_idx + 1}. {file_info["name"]}</div>',
+                        unsafe_allow_html=True,
+                    )
+                    checked = st.checkbox("削除", key=check_key)
+                    if checked:
+                        selected_for_delete.append(file_info)
+
+        delete_submit = st.form_submit_button("チェックした写真を削除する")
+
+    if delete_submit:
+        if not selected_for_delete:
+            st.warning("削除する写真にチェックを入れてください。")
+        else:
             deleted = 0
             for file_info in selected_for_delete:
                 try:

@@ -79,30 +79,25 @@ def _switch_page(page_name: str):
 st.title("🎬 Reel Maker")
 st.caption("写真を選択 → Poolに追加 → リール自動生成")
 
-# ── 状況サマリー ─────────────────────────────────────────────────────────────
-pool_counts = [len(storage.list_files(f"pool_{n}")) for n in range(1, 6)]
-
 st.markdown('<div class="status-card">', unsafe_allow_html=True)
 st.markdown(
-    '<div class="status-row"><span class="status-label">📁 プール状況</span>'
-    '<span class="status-value">　</span></div>',
+    '<div class="status-row"><span class="status-label">📁 写真フォルダー</span>'
+    '<span class="status-value">5分類</span></div>',
     unsafe_allow_html=True,
 )
-for n, c in enumerate(pool_counts, 1):
-    state = "ok" if c > 0 else "empty"
-    icon = "✅" if c > 0 else "⬜"
+for n in range(1, 6):
     name = config.POOL_NAMES[n]
     st.markdown(
-        f'<div class="status-row pool-{state}">'
-        f'<span class="status-label">{icon} {n}. {name}</span>'
-        f'<span class="status-value">{c}枚</span>'
+        f'<div class="status-row">'
+        f'<span class="status-label">{n}. {name}</span>'
+        f'<span class="status-value">　</span>'
         f'</div>',
         unsafe_allow_html=True,
     )
 
 st.markdown(
     '<div class="status-row"><span class="status-label">💾 保存先</span>'
-    '<span class="status-value">☁️ Google Drive</span></div>',
+    '<span class="status-value">アプリ内</span></div>',
     unsafe_allow_html=True,
 )
 st.markdown('</div>', unsafe_allow_html=True)
