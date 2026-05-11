@@ -65,6 +65,15 @@ COLOR_BLACK = (0, 0, 0)
 COLOR_ACCENT = (255, 80, 120)   # Instagram pink
 COLOR_SEMI_BLACK = (0, 0, 0, 160)  # RGBA for text background
 
+# Pool names (1-indexed)
+POOL_NAMES = {
+    1: "外の外観",
+    2: "ランチ",
+    3: "デザート＆ドリンク",
+    4: "室内",
+    5: "その他",
+}
+
 # Transition types
 TRANSITIONS = ["auto", "crossdissolve", "fade", "wipe_left", "wipe_up", "zoom_blur", "glitch"]
 TRANSITION_LABELS = {

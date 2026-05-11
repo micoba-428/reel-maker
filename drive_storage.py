@@ -11,7 +11,7 @@ from typing import List, Optional, Dict
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload, MediaIoBaseUpload
 
 
 SCOPES = ["https://www.googleapis.com/auth/drive"]
@@ -132,6 +132,18 @@ class DriveStorage:
         name = filename or os.path.basename(local_path)
         media = MediaFileUpload(local_path, resumable=True)
         meta = {"name": name, "parents": [folder_id]}
+        result = self._service.files().create(
+            body=meta, media_body=media,
+            fields="id", supportsAllDrives=True,
+        ).execute()
+        return result["id"]
+
+    def upload_bytes(self, file_bytes: bytes, filename: str,
+                     folder_name: str, mime_type: str = "application/octet-stream") -> str:
+        """バイト列を直接Drive にアップロード（カメラロールから）. ファイルIDを返す."""
+        folder_id = self._get_or_create_folder(folder_name)
+        media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=mime_type, resumable=True)
+        meta = {"name": filename, "parents": [folder_id]}
         result = self._service.files().create(
             body=meta, media_body=media,
             fields="id", supportsAllDrives=True,
