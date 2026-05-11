@@ -165,6 +165,7 @@ class BatchProducer:
         self._exporter.export(
             composed,
             filename=fname,
+            output_dir=out_dir,
             progress_callback=progress_callback,
         )
         return os.path.join(out_dir, fname)

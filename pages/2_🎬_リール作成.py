@@ -87,16 +87,15 @@ def _load_pool_files(pool_num: int):
 pools = {n: _load_pool_files(n) for n in range(1, 6)}
 counts = {n: len(p) for n, p in pools.items()}
 
-st.markdown("### 📁 フォルダー状況")
+st.markdown("### 📁 プール状況")
 for n in range(1, 6):
     c = counts[n]
     icon = "✅" if c > 0 else "⬜"
-    color = "#80e0a0" if c > 0 else "#ff8090"
-    folder_name = config.POOL_NAMES[n]
+    color = "#1aaa55" if c > 0 else "#ff8090"
     st.markdown(
         f'<div style="display:flex;justify-content:space-between;'
         f'padding:6px 12px;background:#1a1a2e;border-radius:8px;margin-bottom:4px;">'
-        f'<span style="color:{color}">{icon} {n}.{folder_name}</span>'
+        f'<span style="color:{color}">{icon} Pool {n}</span>'
         f'<span style="font-weight:700">{c}枚</span></div>',
         unsafe_allow_html=True,
     )
@@ -136,12 +135,11 @@ with c2:
         st.session_state.pattern = "1231"
         st.rerun()
 
-# 必須フォルダチェック
+# 必須プールチェック
 required_pools = sorted(set(int(c) for c in p))
 missing = [n for n in required_pools if counts[n] == 0]
 if missing:
-    missing_names = [f"{n}.{config.POOL_NAMES[n]}" for n in missing]
-    st.warning(f"⚠️ 写真が不足しているフォルダ: {', '.join(missing_names)}")
+    st.warning(f"⚠️ Pool {missing} に写真がありません。")
 
 st.markdown("---")
 
@@ -190,7 +188,7 @@ if st.button(f"🎬 {num_reels}本 生成する", disabled=not can_gen):
 
         for i in range(num_reels):
             day = i + 1
-            status.info(f"📥 Day {day}: 写真をDrive からダウンロード中...")
+            status.info(f"📥 Day {day}: 写真を準備中...")
 
             # 各プールから写真を1枚ずつ取得→ローカルにDL
             local_paths = []
@@ -247,8 +245,22 @@ if st.button(f"🎬 {num_reels}本 生成する", disabled=not can_gen):
 
         st.markdown("**📁 Driveの保存先:** `マイドライブ / reel_maker / output/`")
         for fname, fid in uploaded_paths:
-            link = f"https://drive.google.com/file/d/{fid}/view"
-            st.markdown(f"- [{fname}]({link})")
+            if str(fid).startswith("local:"):
+                saved_path = str(fid).removeprefix("local:")
+                if os.path.isfile(saved_path):
+                    with open(saved_path, "rb") as f:
+                        st.download_button(
+                            label=f"⬇️ {fname} を保存",
+                            data=f.read(),
+                            file_name=fname,
+                            mime="video/mp4",
+                            key=f"download_{fname}",
+                        )
+                else:
+                    st.markdown(f"- `{fname}`")
+            else:
+                link = f"https://drive.google.com/file/d/{fid}/view"
+                st.markdown(f"- [{fname}]({link})")
 
     except Exception as e:
         st.error(f"エラー: {e}")

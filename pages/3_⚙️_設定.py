@@ -67,25 +67,29 @@ st.markdown("### ☁️ Google Drive 接続状況")
 if drive_ok:
     st.success("✅ 接続成功")
     root = storage.root_id()
-    drive_url = f"https://drive.google.com/drive/folders/{root}"
-    st.markdown(f"[Driveでフォルダを開く]({drive_url})")
+    if root and not str(root).startswith("/"):
+        drive_url = f"https://drive.google.com/drive/folders/{root}"
+        st.markdown(f"[Driveでフォルダを開く]({drive_url})")
+    else:
+        st.caption("この環境ではアプリ内の作業領域へ保存します。")
 else:
     st.error(f"❌ 接続エラー: {drive_err}")
 
 st.markdown("---")
 
-# ── LINE保存方法 ────────────────────────────────────────────────────────────
-st.markdown("### 📥 LINE → inbox 保存方法")
+# ── 写真追加方法 ────────────────────────────────────────────────────────────
+st.markdown("### 📥 写真アプリから追加")
 st.markdown("""
 **📱 iPhone:**
-1. LINE で写真を長押し → 「保存」（カメラロール）
-2. **Google Drive アプリ**で `reel_maker / inbox` フォルダにアップロード
-3. アプリの「📥 写真を振り分ける」を開く
+1. アプリの「📥 写真を追加する」を開く
+2. 追加先のPoolを選ぶ
+3. 「写真を選択」からフォトライブラリの写真を選ぶ
+4. 「Poolに追加する」でGoogle Driveへ保存
 
 **💻 Mac:**
-1. LINE Mac で写真を右クリック → 「画像を保存」
-2. 保存先：`マイドライブ/reel_maker/inbox/`
-3. アプリの「📥 写真を振り分ける」を開く
+1. アプリの「📥 写真を追加する」を開く
+2. 追加先のPoolを選ぶ
+3. 写真ファイルを選択して「Poolに追加する」
 """)
 
 st.markdown("---")

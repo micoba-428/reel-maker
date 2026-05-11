@@ -27,15 +27,17 @@ class Exporter:
 
     def export(self, clip: VideoClip,
                filename: str = None,
+               output_dir: str = None,
                progress_callback=None) -> str:
         """Export the final clip to MP4."""
-        os.makedirs(config.OUTPUT_DIR, exist_ok=True)
+        out_dir = output_dir or config.OUTPUT_DIR
+        os.makedirs(out_dir, exist_ok=True)
 
         if not filename:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"reel_{ts}.mp4"
 
-        output_path = os.path.join(config.OUTPUT_DIR, filename)
+        output_path = os.path.join(out_dir, filename)
 
         def logger_callback(progress_dict):
             if progress_callback and 't' in progress_dict:

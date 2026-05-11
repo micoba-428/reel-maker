@@ -21,7 +21,6 @@ FONTS_DIR = os.path.join(ASSETS_DIR, "fonts")
 # ── Data location auto-detection ──────────────────────────────────────────────
 # 構造:  <data root>/app/<this file>   ←  app コードの親=データルート
 #       <data root>/pool_1〜pool_5/   ←  写真プール
-#       <data root>/inbox/            ←  振り分け前の写真
 #       <data root>/output/           ←  生成MP4
 #
 # 1. BASE_DIR が "<...>/reel_maker/app" 形式 → 親 (reel_maker) をDATA_ROOTに
@@ -40,7 +39,6 @@ def _resolve_data_root() -> str:
 DATA_ROOT       = _resolve_data_root()
 DRIVE_REEL_DIR  = DATA_ROOT if "CloudStorage" in DATA_ROOT else ""
 POOL_BASE       = DATA_ROOT
-INBOX_DIR       = os.path.join(DATA_ROOT, "inbox")
 OUTPUT_DIR      = os.path.join(DATA_ROOT, "output")
 TEMP_DIR        = os.path.join(DATA_ROOT, ".temp")  # 処理中の一時ファイル
 
